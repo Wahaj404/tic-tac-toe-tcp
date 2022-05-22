@@ -1,57 +1,27 @@
 from socket import socket
 from board import Board
-from util import PORT
-
+from util import CONNECTION
 
 class Client:
-    def __init__(self):
-        self.conn = socket()
-        self.conn.connect(('localhost', PORT))
+    def __init__(self, game_code):
+        self._conn = socket()
+        self._conn.connect(CONNECTION)
+        self._send(game_code)
 
-    def _recv(self):
-        return self.conn.recv(1024).decode()
+    def _recv(self) -> str:
+        msg = self._conn.recv(1024).decode()
+        print(f'{msg=}')
+        return msg
 
     def _send(self, msg):
-        self.conn.send(msg.encode())
+        self._conn.send(msg.encode())
 
-    def _show_board(self):
+    def _show_board(self) -> Board | str:
         msg = self._recv()
-        if msg == 'game over':
-            print(self._recv())
-            return True
-        else:
-            print(Board(msg))
-            return False
-
-    def start(self):
-        game_code = input('Enter your game code: ')
-        self._send(game_code)
-        print(self._recv())
-        print(self._recv())
-        mark = self._recv()
-        if mark == 'x':
-            self._show_board()
-            for _ in range(5):
-                move = input('move: ')
-                self._send(move)
-
-                if self._show_board():
-                    return
-
-                if self._show_board():
-                    return
-        else:
-            self._show_board()
-            for _ in range(4):
-                if self._show_board():
-                    return
-
-                move = input('move: ')
-                self._send(move)
-
-                if self._show_board():
-                    return
+        return self._recv() if msg == 'game over' else Board(msg)
 
 
-client = Client()
-client.start()
+    def handshake(self):
+        yield self._recv() # game created or game found
+        yield self._recv() # both players connected
+        self.mark = self._recv()

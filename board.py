@@ -4,17 +4,15 @@ class Board:
         if s is None:
             return
         if len(s) != 9:
-            raise ValueError('Invalid string for grid initialization')
+            raise ValueError(f'{s} is an invalid string for grid initialization')
         for i in range(3):
             for j in range(3):
                 self[i, j] = s[i * 3 + j]
 
     def __setitem__(self, coord, token):
-        if token not in 'xo':
+        if token not in 'xo ':
             raise ValueError(f'{token} is an invalid value for grid box')
         i, j = coord
-        if self.grid[i][j] != ' ':
-            raise ValueError(f'{coord} is already marked')
         self.grid[i][j] = token
 
     def __getitem__(self, coord):
@@ -53,3 +51,6 @@ class Board:
         if w is None:
             w = self._check_diags()
         return w
+
+    def finished(self):
+        return all(mark != ' ' for row in self.grid for mark in row) or self.winner() is not None

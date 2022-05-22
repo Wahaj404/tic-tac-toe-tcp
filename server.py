@@ -1,7 +1,8 @@
 from socket import socket
 from threading import Thread
 from board import Board
-from util import PORT
+from util import CONNECTION
+import time
 
 
 class Game(Thread):
@@ -16,11 +17,12 @@ class Game(Thread):
         marks = ['x', 'o']
         for m, p in zip(marks, self.players):
             p.send(m.encode())
+        time.sleep(0.5)
         for turn in range(9):
+            print(f'move #{turn}')
             if self.board.winner() is not None:
                 break
             for player in self.players:
-                # print(f'sending {repr(self.board)}')
                 player.send(repr(self.board).encode())
             turn &= 1
             while True:
@@ -33,20 +35,22 @@ class Game(Thread):
                     break
 
         for player in self.players:
+            player.send(repr(self.board).encode())
+            time.sleep(0.5)
             player.send('game over'.encode())
+        time.sleep(0.5)
         winner = self.board.winner()
         if winner is None:
             for player in self.players:
-                player.send('tie'.encode())
+                player.send('the game was a draw'.encode())
         else:
-            self.players[winner != 'x'].send('winner'.encode())
-            self.players[winner == 'x'].send('loser'.encode())
-
+            self.players[winner != 'x'].send('you won'.encode())
+            self.players[winner == 'x'].send('you lost'.encode())
 
 class Server:
     def __init__(self):
         self.server = socket()
-        self.server.bind(('localhost', PORT))
+        self.server.bind(CONNECTION)
         self.server.listen()
         self.pending = {}
 
@@ -56,6 +60,7 @@ class Server:
             game_code = conn.recv(1024).decode()
             if game_code in self.pending:
                 conn.send('Game found, connecting.'.encode())
+                time.sleep(1.0)
                 Game(self.pending[game_code], conn).start()
                 del self.pending[game_code]
             else:
