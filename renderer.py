@@ -1,17 +1,24 @@
 from functools import partial
-from operator import contains
 from queue import Queue
-from tkinter import BOTH, Button, DISABLED, Label, NORMAL, simpledialog, Tk
+from tkinter import Button, DISABLED, Label, NORMAL, simpledialog, Tk
 from threading import Thread
+from typing import Tuple
 
 from client import Client
 
+
 turn = False
-colors = {"x": "white", "o": "red", " ": "papaya whip"}
+colors = {"x": "white", "o": "red", " ": "black"}
 
 
 class ClientThread(Thread):
-    def __init__(self, buttons, top_text, bottom_text, moves):
+    def __init__(
+        self,
+        buttons: list[list[Button]],
+        top_text: Label,
+        bottom_text: Label,
+        moves: Queue[Tuple[int, int]],
+    ):
         super().__init__()
 
         game_code = simpledialog.askstring(
@@ -19,11 +26,13 @@ class ClientThread(Thread):
         )
         self._client = Client(game_code)
 
+        top_text.config(text=f"Game code: {game_code}")
+
         self._buttons = buttons
         self._bottom_text = bottom_text
+        self._top_text = top_text
         self._moves = moves
 
-        top_text.config(text=f"Game code: {game_code}")
 
     def run(self):
         for msg in self._client.handshake():
@@ -58,7 +67,7 @@ class ClientThread(Thread):
         self._client.send(f"{i}{j}")
 
     def _get_board(self):
-        return self._client.show_board()
+        return self._client.board()
 
     def _render(self):
         board = self._get_board()
@@ -73,17 +82,19 @@ class ClientThread(Thread):
 
         if board.finished():
             txt = self._get_board()
-            self._bottom_text.config(text=txt, fg="green" if "won" in txt else "red")
+            fg = "green" if "won" in txt else "red"
+            self._bottom_text.config(text=txt, fg=fg)
+            self._top_text.config(text="Game over", fg=fg)
             raise SystemExit()
 
 
-def mark(moves, i, j):
+def mark(moves: Queue[Tuple[int, int]], i: int, j: int):
     global turn
     if turn:
         moves.put((i, j))
 
 
-def make_button(frame, moves, i, j):
+def make_button(frame: Tk, moves: Queue[Tuple[int, int]], i: int, j: int):
     button = Button(
         frame,
         padx=1,
@@ -99,6 +110,12 @@ def make_button(frame, moves, i, j):
     return button
 
 
+def make_label(row: int):
+    lbl = Label(font=font(20), bg="black", fg="white", width=30)
+    lbl.grid(row=row, column=0, columnspan=3)
+    return lbl
+
+
 def font(size: int):
     return ("arial", size, "bold")
 
@@ -106,11 +123,6 @@ def font(size: int):
 if __name__ == "__main__":
     root = Tk()
     root.title("Tic-Tac-Toe")
-
-    def make_label(row):
-        lbl = Label(font=font(20), bg="black", fg="white", width=30)
-        lbl.grid(row=row, column=0, columnspan=3)
-        return lbl
 
     moves = Queue()
     buttons = [[make_button(root, moves, i, j) for j in range(3)] for i in range(3)]

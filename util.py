@@ -2,7 +2,7 @@ from socket import socket
 from time import sleep
 
 PORT = 4015
-CONNECTION = ('localhost', PORT)
+CONNECTION = ("localhost", PORT)
 
 
 def send(conn: socket, msg: str, delay: float = 0.0):
@@ -10,5 +10,5 @@ def send(conn: socket, msg: str, delay: float = 0.0):
     sleep(delay)
 
 
-def recv(conn: socket) -> str:
+def recv(conn: socket):
     return conn.recv(1024).decode()

@@ -21,13 +21,13 @@ class Board:
         i, j = coord
         return self.grid[i][j]
 
-    def __str__(self) -> str:
+    def __str__(self):
         return str(self.grid)
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return "".join(token for row in self.grid for token in row)
 
-    def _check_rows(self) -> str | None:
+    def _check_rows(self):
         for i in range(3):
             if self.grid[i][0] != " " and (
                 self.grid[i][0] == self.grid[i][1] == self.grid[i][2]
@@ -35,7 +35,7 @@ class Board:
                 return self.grid[i][0]
         return None
 
-    def _check_cols(self) -> str | None:
+    def _check_cols(self):
         for i in range(3):
             if self.grid[0][i] != " " and (
                 self.grid[0][i] == self.grid[1][i] == self.grid[2][i]
@@ -43,7 +43,7 @@ class Board:
                 return self.grid[0][i]
         return None
 
-    def _check_diags(self) -> str | None:
+    def _check_diags(self):
         if self.grid[0][0] != " " and (
             self.grid[0][0] == self.grid[1][1] == self.grid[2][2]
         ):
@@ -54,7 +54,7 @@ class Board:
             return self.grid[0][0]
         return None
 
-    def winner(self) -> str | None:
+    def winner(self):
         w = self._check_rows()
         if w is None:
             w = self._check_cols()
@@ -62,7 +62,7 @@ class Board:
             w = self._check_diags()
         return w
 
-    def finished(self) -> bool:
+    def finished(self):
         return (
             all(mark != " " for row in self.grid for mark in row)
             or self.winner() is not None
