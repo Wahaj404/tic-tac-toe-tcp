@@ -44,7 +44,7 @@ class Game(Thread):
     def _send_results(self, winner: str):
         if winner is None:
             for player in self.players:
-                send(player, 'the game was a draw')
+                send(player, 'The game was a draw')
         else:
             send(self.players[winner != 'x'], 'you won')
             send(self.players[winner == 'x'], 'you lost')
@@ -71,7 +71,7 @@ class Server:
                 Game(pending.pop(game_code), conn).start()
             else:
                 pending[game_code] = conn
-                send(conn, 'Game created, waiting for opponent to join.')
+                send(conn, 'Waiting for opponent to join.')
 
 
 if __name__ == '__main__':
