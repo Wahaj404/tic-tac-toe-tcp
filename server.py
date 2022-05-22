@@ -1,73 +1,79 @@
 from socket import socket
 from threading import Thread
+from time import sleep
+
 from board import Board
-from util import CONNECTION
-import time
+from util import CONNECTION, recv, send
 
 
 class Game(Thread):
-    def __init__(self, p1, p2):
+    marks = ('x', 'o')
+    delay_gap = 0.5
+
+    def __init__(self, x: socket, o: socket):
         super().__init__()
-        self.players = [p1, p2]
+
+        self.players = (x, o)
         for player in self.players:
-            player.send('Both players connected, game starting.'.encode())
+            send(player, 'Both players connected, game starting.')
+
         self.board = Board()
 
     def run(self):
-        marks = ['x', 'o']
-        for m, p in zip(marks, self.players):
-            p.send(m.encode())
-        time.sleep(0.5)
-        for turn in range(9):
-            print(f'move #{turn}')
-            if self.board.winner() is not None:
-                break
+        self._send_marks()
+        self._game_loop()
+        self._send_results(self.board.winner())
+        self._close_connections()
+
+    def _send_marks(self):
+        for player, mark in zip(self.players, self.marks):
+            send(player, mark, self.delay_gap)
+
+    def _game_loop(self):
+        turn = 0
+        while not self.board.finished():
             for player in self.players:
-                player.send(repr(self.board).encode())
-            turn &= 1
-            while True:
-                try:
-                    move = self.players[turn].recv(1024).decode()
-                    self.board[tuple(map(int, move))] = marks[turn]
-                except Exception as e:
-                    print(e)
-                else:
-                    break
+                send(player, repr(self.board))
+            self.board[map(int, recv(self.players[turn]))] = self.marks[turn]
+            turn = (turn + 1) & 1
 
         for player in self.players:
-            player.send(repr(self.board).encode())
-            time.sleep(0.5)
-            player.send('game over'.encode())
-        time.sleep(0.5)
-        winner = self.board.winner()
+            send(player, repr(self.board), self.delay_gap)
+            send(player, 'game over')
+
+    def _send_results(self, winner: str):
         if winner is None:
             for player in self.players:
-                player.send('the game was a draw'.encode())
+                send(player, 'the game was a draw')
         else:
-            self.players[winner != 'x'].send('you won'.encode())
-            self.players[winner == 'x'].send('you lost'.encode())
+            send(self.players[winner != 'x'], 'you won')
+            send(self.players[winner == 'x'], 'you lost')
+
+    def _close_connections(self):
+        for player in self.players:
+            player.close()
+
 
 class Server:
     def __init__(self):
         self.server = socket()
         self.server.bind(CONNECTION)
         self.server.listen()
-        self.pending = {}
 
-    def start(self):
+    def listen(self):
+        pending = {}
         while True:
             conn, _ = self.server.accept()
-            game_code = conn.recv(1024).decode()
-            if game_code in self.pending:
-                conn.send('Game found, connecting.'.encode())
-                time.sleep(1.0)
-                Game(self.pending[game_code], conn).start()
-                del self.pending[game_code]
+            game_code = recv(conn)
+            if game_code in pending:
+                send(conn, 'Game found, connecting.')
+                sleep(1.0)
+                Game(pending.pop(game_code), conn).start()
             else:
-                self.pending[game_code] = conn
-                conn.send('Game created, waiting for opponent to join.'.encode())
+                pending[game_code] = conn
+                send(conn, 'Game created, waiting for opponent to join.')
 
 
 if __name__ == '__main__':
     server = Server()
-    server.start()
+    server.listen()
