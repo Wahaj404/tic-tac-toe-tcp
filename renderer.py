@@ -1,6 +1,6 @@
 from functools import partial
 from queue import Queue
-from tkinter import Button, DISABLED, Label, NORMAL, simpledialog, Tk
+from tkinter import Button, DISABLED, Label, NORMAL, messagebox, simpledialog, Tk
 from threading import Thread
 from typing import Tuple
 
@@ -14,31 +14,35 @@ colors = {"x": "white", "o": "red", " ": "black"}
 class ClientThread(Thread):
     def __init__(
         self,
+        host: str,
+        port: int,
         buttons: list[list[Button]],
         top_text: Label,
         bottom_text: Label,
         moves: Queue[Tuple[int, int]],
     ):
         super().__init__()
+        self._client = Client(host, port)
 
-        game_code = simpledialog.askstring(
+        self._game_code = simpledialog.askstring(
             title="Tic-Tac-Toe", prompt="Enter your game code: "
         )
-        self._client = Client(game_code)
-
-        top_text.config(text=f"Game code: {game_code}")
+        top_text.config(text=f"Game code: {self._game_code}")
 
         self._buttons = buttons
         self._bottom_text = bottom_text
         self._top_text = top_text
         self._moves = moves
 
-
     def run(self):
-        for msg in self._client.handshake():
+        for msg in self._client.handshake(self._game_code):
             self._bottom_text.config(text=msg)
 
+        self._turn = 1
+        self._total_turns = 5
+
         if self._client.mark != "x":
+            self._total_turns -= 1
             global colors
             colors["x"], colors["o"] = colors["o"], colors["x"]
 
@@ -49,7 +53,11 @@ class ClientThread(Thread):
             turns[i & 1]()
 
     def _my_turn(self):
+        self._top_text.config(
+            text=f"Turn #{self._turn} Remaining: {self._total_turns - self._turn}"
+        )
         self._bottom_text.config(text="Your turn")
+        self._turn += 1
 
         global turn
         turn = True
@@ -127,7 +135,20 @@ if __name__ == "__main__":
     moves = Queue()
     buttons = [[make_button(root, moves, i, j) for j in range(3)] for i in range(3)]
 
-    clientThread = ClientThread(buttons, make_label(0), make_label(4), moves)
-    clientThread.start()
+    while True:
+        try:
+            addr = simpledialog.askstring("Connection", "Enter IP address of server: ")
+            host, port = addr.split(":")
+            clientThread = ClientThread(
+                host, int(port), buttons, make_label(0), make_label(4), moves
+            )
+            clientThread.start()
+        except:
+            messagebox.showerror(
+                "Connection error",
+                f"Could not connect with a server at {addr}\nTry a different host and port",
+            )
+        else:
+            break
 
     root.mainloop()

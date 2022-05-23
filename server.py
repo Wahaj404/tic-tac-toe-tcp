@@ -3,7 +3,7 @@ from threading import Thread
 from time import sleep
 
 from board import Board
-from util import CONNECTION, recv, send
+from util import recv, send
 
 
 class Game(Thread):
@@ -55,10 +55,11 @@ class Game(Thread):
 
 
 class Server:
-    def __init__(self):
+    def __init__(self, host: str, port: int):
         self._socket = socket()
-        self._socket.bind(CONNECTION)
+        self._socket.bind((host, port))
         self._socket.listen()
+        print(f"Server ready at {host}:{port}")
 
     def listen(self):
         pending = {}
@@ -75,4 +76,14 @@ class Server:
 
 
 if __name__ == "__main__":
-    Server().listen()
+    while True:
+        try:
+            host = input("Enter host: ")
+            port = input("Enter port: ")
+            server = Server(host, int(port))
+        except:
+            print(f"Could not establish a server at {host}:{port}")
+            print("Try a different host and port")
+        else:
+            break
+    server.listen()
